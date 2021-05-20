@@ -54,6 +54,7 @@ void AABCharacter::SetControlMode(EControlMode ControlMode)
 
     auto characterMovement = GetCharacterMovement();
 	characterMovement->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
+	characterMovement->JumpZVelocity = 800.0f;
 	switch (CurrentControlMode)
 	{
 	case AABCharacter::EControlMode::GTA:
@@ -108,6 +109,7 @@ void AABCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAxis(TEXT("Turn"), this, &AABCharacter::Turn);
 	PlayerInputComponent->BindAxis(TEXT("LookUp"), this, &AABCharacter::LookUp);
 	PlayerInputComponent->BindAction(TEXT("ViewChange"), EInputEvent::IE_Pressed, this, &AABCharacter::ViewChange);
+	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Pressed, this, &AABCharacter::Jump);
 }
 
 void AABCharacter::UpDown(float NewAxisValue)
@@ -170,4 +172,3 @@ void AABCharacter::ViewChange()
 		break;
 	}
 }
-
