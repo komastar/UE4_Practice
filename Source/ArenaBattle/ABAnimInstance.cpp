@@ -13,6 +13,8 @@ UABAnimInstance::UABAnimInstance()
     {
         AttackMontage = ATTACK_MONTAGE.Object;
     }
+
+    IsDead = false;
 }
 
 void UABAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
@@ -20,7 +22,12 @@ void UABAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
     Super::NativeUpdateAnimation(DeltaSeconds);
 
     auto Pawn = TryGetPawnOwner();
-    if (::IsValid(Pawn))
+    if (false == ::IsValid(Pawn))
+    {
+        return;
+    }
+
+    if (false == IsDead)
     {
         CurrentPawnSpeed = Pawn->GetVelocity().Size();
         auto Character = Cast<ACharacter>(Pawn);
@@ -33,11 +40,13 @@ void UABAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 void UABAnimInstance::PlayAttackMontage()
 {
+    ABCHECK(false == IsDead);
     Montage_Play(AttackMontage, 1.0f);
 }
 
 void UABAnimInstance::JumpToAttackMontageSection(int32 NewSection)
 {
+    ABCHECK(false == IsDead);
     ABCHECK(Montage_IsPlaying(AttackMontage));
     Montage_JumpToSection(GetAttackMontageSectionName(NewSection));
 }
