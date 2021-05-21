@@ -6,6 +6,7 @@
 #include "ABAnimInstance.h"
 #include "ABCharacterStatComponent.h"
 #include "ABCharacterWidget.h"
+#include "ABAIController.h"
 #include "Components/WidgetComponent.h"
 #include "DrawDebugHelpers.h"
 
@@ -64,6 +65,9 @@ AABCharacter::AABCharacter()
 
 	AttackRadius = 50.0f;
 	AttackRange = 200.0f;
+
+	AIControllerClass = AABAIController::StaticClass();
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 // Called when the game starts or when spawned
