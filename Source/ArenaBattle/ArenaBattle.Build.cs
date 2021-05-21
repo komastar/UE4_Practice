@@ -19,5 +19,10 @@ public class ArenaBattle : ModuleRules
 			, "GameplayTasks"
 			, "NavigationSystem"
 		});
+
+		PrivateDependencyModuleNames.AddRange(new string[]
+		{
+			"ArenaBattleSetting"
+		});
 	}
 }

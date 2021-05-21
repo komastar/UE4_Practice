@@ -9,6 +9,8 @@
 #include "ABAIController.h"
 #include "Components/WidgetComponent.h"
 #include "DrawDebugHelpers.h"
+#include "ABCharacterSetting.h"
+#include "ABGameInstance.h"
 
 // Sets default values
 AABCharacter::AABCharacter()
@@ -74,6 +76,19 @@ AABCharacter::AABCharacter()
 void AABCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (!IsPlayerControlled())
+	{
+		auto DefaultSetting = GetDefault<UABCharacterSetting>();
+		int32 RandIndex = FMath::RandRange(0, DefaultSetting->CharacterAssets.Num() - 1);
+		CharacterAssetToLoad = DefaultSetting->CharacterAssets[RandIndex];
+
+		auto GameInstance = Cast<UABGameInstance>(GetGameInstance());
+		if (nullptr != GameInstance)
+		{
+			AssetStreamingHandle = GameInstance->StreamableManager.RequestAsyncLoad(CharacterAssetToLoad, FStreamableDelegate::CreateUObject(this, &AABCharacter::OnAssetLoadComplete));
+		}
+	}
 
 	auto CharacterWidget = Cast<UABCharacterWidget>(HPBarWidget->GetUserWidgetObject());
 	if (nullptr != CharacterWidget)
@@ -368,5 +383,15 @@ void AABCharacter::AttackCheck()
 			FDamageEvent DamageEvent;
 			HitResult.Actor->TakeDamage(CharacterStat->GetAttack(), DamageEvent, GetController(), this);
 		}
+	}
+}
+
+void AABCharacter::OnAssetLoadComplete()
+{
+	USkeletalMesh* AssetLoaded = Cast<USkeletalMesh>(AssetStreamingHandle->GetLoadedAsset());
+	AssetStreamingHandle.Reset();
+	if (nullptr != AssetLoaded)
+	{
+		GetMesh()->SetSkeletalMesh(AssetLoaded);
 	}
 }
