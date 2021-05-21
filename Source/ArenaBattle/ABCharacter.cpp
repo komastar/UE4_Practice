@@ -4,6 +4,9 @@
 #include "ABCharacter.h"
 #include "ABWeapon.h"
 #include "ABAnimInstance.h"
+#include "ABCharacterStatComponent.h"
+#include "ABCharacterWidget.h"
+#include "Components/WidgetComponent.h"
 #include "DrawDebugHelpers.h"
 
 // Sets default values
@@ -14,9 +17,12 @@ AABCharacter::AABCharacter()
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SPRINGARM"));
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("CAMERA"));
+	CharacterStat = CreateDefaultSubobject<UABCharacterStatComponent>(TEXT("CHARACTERSTAT"));
+	HPBarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HPBARWIDGET"));
 
 	SpringArm->SetupAttachment(GetCapsuleComponent());
 	Camera->SetupAttachment(SpringArm);
+	HPBarWidget->SetupAttachment(GetMesh());
 
 	GetMesh()->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -88.0f), FRotator(0.0f, -90.0f, 0.0f));
 	SpringArm->TargetArmLength = 400.0f;
@@ -36,6 +42,15 @@ AABCharacter::AABCharacter()
 		GetMesh()->SetAnimInstanceClass(WARRIOR_ANIM.Class);
 	}
 
+	HPBarWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 180.0f));
+	HPBarWidget->SetWidgetSpace(EWidgetSpace::Screen);
+	static ConstructorHelpers::FClassFinder<UUserWidget> UI_HUD(TEXT("/Game/Book/UI/UI_HPBar.UI_HPBar_C"));
+	if (UI_HUD.Succeeded())
+	{
+		HPBarWidget->SetWidgetClass(UI_HUD.Class);
+		HPBarWidget->SetDrawSize(FVector2D(150.0f, 50.0f));
+	}
+
 	SetControlMode(EControlMode::DIABLO);
 
 	ArmLengthSpeed = 3.0f;
@@ -49,31 +64,18 @@ AABCharacter::AABCharacter()
 
 	AttackRadius = 50.0f;
 	AttackRange = 200.0f;
-
-	//if (GetMesh()->DoesSocketExist(WeaponSocket))
-	//{
-	//	Weapon = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WEAPON"));
-	//	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SK_WEAPON(TEXT("/Game/InfinityBladeWeapons/Weapons/Blade/Swords/Blade_BlackKnight/SK_Blade_BlackKnight.SK_Blade_BlackKnight"));
-	//	if (SK_WEAPON.Succeeded())
-	//	{
-	//		Weapon->SetSkeletalMesh(SK_WEAPON.Object);
-	//	}
-
-	//	Weapon->SetupAttachment(GetMesh(), WeaponSocket);
-	//}
 }
 
 // Called when the game starts or when spawned
 void AABCharacter::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
-    //FName WeaponSocket(TEXT("hand_rSocket"));
-    //auto CurWeapon = GetWorld()->SpawnActor<AABWeapon>(FVector::ZeroVector, FRotator::ZeroRotator);
-    //if (nullptr != CurWeapon)
-    //{
-    //    CurWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocket);
-    //}
+	auto CharacterWidget = Cast<UABCharacterWidget>(HPBarWidget->GetUserWidgetObject());
+	if (nullptr != CharacterWidget)
+	{
+		CharacterWidget->BindCharacterStat(CharacterStat);
+	}
 }
 
 float AABCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -81,11 +83,7 @@ float AABCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEv
 	float FinalDamage = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
 	ABLOG(Warning, TEXT("Actor : %s took Damage : %f"), *GetName(), FinalDamage);
 
-	if (0.0f < FinalDamage)
-	{
-		ABAnim->SetDeadAnim();
-		SetActorEnableCollision(false);
-	}
+	CharacterStat->SetDamage(FinalDamage);
 
 	return FinalDamage;
 }
@@ -161,6 +159,12 @@ void AABCharacter::PostInitializeComponents()
 			}
 		});
 	ABAnim->OnAttackHitCheck.AddUObject(this, &AABCharacter::AttackCheck);
+	CharacterStat->OnHPIsZero.AddLambda([this]() -> void
+		{
+			ABLOG(Warning, TEXT("OnHPIsZero"));
+			ABAnim->SetDeadAnim();
+			SetActorEnableCollision(false);
+		});
 }
 
 // Called to bind functionality to input
@@ -336,7 +340,7 @@ void AABCharacter::AttackCheck()
 		{
 			ABLOG(Warning, TEXT("Hit Actor Name : %s"), *HitResult.Actor->GetName());
 			FDamageEvent DamageEvent;
-			HitResult.Actor->TakeDamage(50.0f, DamageEvent, GetController(), this);
+			HitResult.Actor->TakeDamage(CharacterStat->GetAttack(), DamageEvent, GetController(), this);
 		}
 	}
 }
