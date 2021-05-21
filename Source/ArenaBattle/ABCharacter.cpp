@@ -92,6 +92,19 @@ float AABCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEv
 	return FinalDamage;
 }
 
+void AABCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	if (IsPlayerControlled())
+	{
+		SetControlMode(EControlMode::DIABLO);
+	}
+	else
+	{
+		SetControlMode(EControlMode::NPC);
+	}
+}
+
 void AABCharacter::SetControlMode(EControlMode ControlMode)
 {
 	CurrentControlMode = ControlMode;
@@ -101,9 +114,10 @@ void AABCharacter::SetControlMode(EControlMode ControlMode)
     auto characterMovement = GetCharacterMovement();
 	characterMovement->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
 	characterMovement->JumpZVelocity = 800.0f;
+	characterMovement->MaxWalkSpeed = 600.0f;
 	switch (CurrentControlMode)
 	{
-	case AABCharacter::EControlMode::GTA:
+	case EControlMode::GTA:
 		ArmLengthTo = 450.0f;
         SpringArm->bUsePawnControlRotation = true;
         SpringArm->bInheritPitch = true;
@@ -113,7 +127,7 @@ void AABCharacter::SetControlMode(EControlMode ControlMode)
         characterMovement->bOrientRotationToMovement = true;
         characterMovement->bUseControllerDesiredRotation = false;
 		break;
-	case AABCharacter::EControlMode::DIABLO:
+	case EControlMode::DIABLO:
 		ArmLengthTo = 800.0f;
 		ArmRotationTo = FRotator(-45.0f, 0.0f, 0.0f);
 		SpringArm->bUsePawnControlRotation = false;
@@ -123,6 +137,13 @@ void AABCharacter::SetControlMode(EControlMode ControlMode)
 		SpringArm->bDoCollisionTest = false;
 		characterMovement->bOrientRotationToMovement = false;
         characterMovement->bUseControllerDesiredRotation = true;
+		break;
+	case EControlMode::NPC:
+		bUseControllerRotationYaw = false;
+		characterMovement->bUseControllerDesiredRotation = false;
+		characterMovement->bOrientRotationToMovement = true;
+		characterMovement->RotationRate = FRotator(0.0f, 480.0f, 0.0f);
+		characterMovement->MaxWalkSpeed = 300.0f;
 		break;
 	}
 }
@@ -288,6 +309,7 @@ void AABCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted
 	ABCHECK(0 < CurrentCombo);
 	IsAttacking = false;
 	AttackEndComboState();
+	OnAttackEnd.Broadcast();
 }
 
 void AABCharacter::AttackStartComboState()
